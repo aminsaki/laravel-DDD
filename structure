@@ -153,3 +153,53 @@ Modules/
         ├── Unit/
         │   └── Domain/
         └── Feature/                   
+-------------------
+
+app/Modules/Task/
+│
+├── Core/
+│   ├── Domain/
+│   │   ├── Entities/
+│   │   │   └── Task.php
+│   │   ├── ValueObjects/
+│   │   │   ├── TaskId.php
+│   │   │   └── TaskStatus.php
+│   │   ├── Events/
+│   │   │   ├── TaskCreated.php
+│   │   │   └── TaskCompleted.php
+│   │   ├── Exceptions/
+│   │   │   └── InvalidTaskTransitionException.php
+│   │   └── Repositories/
+│   │       └── TaskRepositoryInterface.php
+│   │
+│   └── Application/
+│       └── UseCases/
+│           ├── CreateTask/
+│           │   ├── CreateTaskCommand.php
+│           │   └── CreateTaskUseCase.php
+│           ├── CompleteTask/
+│           │   ├── CompleteTaskCommand.php
+│           │   └── CompleteTaskUseCase.php
+│           └── AssignTask/
+│               ├── AssignTaskCommand.php
+│               └── AssignTaskUseCase.php
+│
+├── Infrastructure/
+│   └── Persistence/
+│       ├── Models/
+│       │   └── TaskModel.php
+│       └── Repositories/
+│           └── EloquentTaskRepository.php
+│
+├── Presentation/
+│   └── Http/
+│       ├── Controllers/
+│       │   └── V1/
+│       │       ├── CreateTaskController.php
+│       │       └── CompleteTaskController.php
+│       ├── Requests/
+│       │   └── CreateTaskRequest.php
+│       └── Resources/
+│           └── TaskResource.php
+│
+└── TaskServiceProvider.php
