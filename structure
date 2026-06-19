@@ -1,0 +1,155 @@
+project-root/
+├── app/                                      ← هسته خود لاراول، حداقلی نگه دار (فقط AppServiceProvider و امثالش)
+│
+├── composer.json                             ← باید Modules\\ رو به Modules/ تو psr-4 اضافه کنی
+│
+└── Modules/
+    ├── ModulesServiceProvider.php            ← تنها Provider که باید به لاراول معرفی کنی؛ بقیه Providerها رو خودش رجیستر می‌کنه
+    │
+    ├── Core/                                 ← Shared Kernel - پایه مشترک همه ماژول‌ها، بدون منطق تجاری
+    │   ├── Domain/
+    │   │   ├── Entity.php                    ← کلاس پایه انتزاعی برای همه Entityها
+    │   │   ├── AggregateRoot.php             ← ارث‌بر Entity - جمع‌آوری Domain Events (recordEvent/pullDomainEvents)
+    │   │   ├── ValueObject.php               ← کلاس پایه انتزاعی برای Value Objectها
+    │   │   ├── DomainEvent.php                ← Interface مشترک برای رویدادهای دامنه
+    │   │   └── Exceptions/
+    │   │       └── DomainException.php        ← پدر همه Exceptionهای دامنه‌ای
+    │   ├── Application/
+    │   │   ├── Command.php                    ← Marker interface برای دستورها
+    │   │   ├── CommandHandler.php             ← قرارداد متد handle() برای Handlerهای دستور
+    │   │   ├── Query.php                      ← Marker interface برای کوئری‌ها
+    │   │   ├── QueryHandler.php               ← قرارداد متد handle() برای Handlerهای کوئری
+    │   │   └── Bus/
+    │   │       ├── CommandBus.php             ← دستورها رو به Handler ثبت‌شده وصل می‌کنه
+    │   │       └── QueryBus.php               ← همون کار رو برای کوئری‌ها
+    │   └── Infrastructure/
+    │       └── Providers/
+    │           └── CoreServiceProvider.php    ← CommandBus/QueryBus رو singleton ثبت می‌کنه؛ باید اول از همه لود بشه
+    │
+    └── Order/                                 ← یک ماژول نمونه کامل و کارکردی
+        ├── Domain/                            ← قلب DDD - خالص، صفر وابستگی به لاراول
+        │   ├── Entities/
+        │   │   └── Order.php                  ← Entity اصلی (extends AggregateRoot) - تمام قوانین تجاری اینجاست
+        │   ├── ValueObjects/
+        │   │   ├── OrderId.php                ← شناسه UUID به‌صورت Value Object (نه string خام)
+        │   │   ├── Money.php                   ← مبلغ immutable با عملیات add() و چک ارز
+        │   │   └── OrderStatus.php             ← enum با متد canTransitionTo() برای قوانین تغییر وضعیت
+        │   ├── Events/
+        │   │   └── OrderPlaced.php             ← implements DomainEvent - وقتی سفارش ثبت می‌شه صادر می‌شه
+        │   ├── Exceptions/
+        │   │   └── InvalidOrderException.php   ← extends DomainException - خطاهای دامنه‌ای سفارش
+        │   └── Repositories/
+        │       └── OrderRepositoryInterface.php ← فقط Contract؛ دامنه نمی‌دونه DB چیه
+        │
+        ├── Application/                        ← هماهنگ‌کننده Use Caseها (CQRS سبک)
+        │   ├── Commands/
+        │   │   └── PlaceOrder/
+        │   │       ├── PlaceOrderCommand.php    ← داده‌ی ورودی دستور (implements Command)
+        │   │       └── PlaceOrderHandler.php    ← دامنه رو صدا می‌زنه، ذخیره می‌کنه، Eventها رو dispatch می‌کنه
+        │   ├── Queries/
+        │   │   └── GetOrder/
+        │   │       ├── GetOrderQuery.php        ← داده‌ی ورودی کوئری (implements Query)
+        │   │       └── GetOrderHandler.php      ← از Repository می‌خونه و به DTO تبدیل می‌کنه
+        │   └── DTOs/
+        │       └── OrderData.php                ← خروجی Query؛ هیچ‌وقت Entity دامنه مستقیم خارج نمی‌شه
+        │
+        ├── Infrastructure/                       ← پیاده‌سازی واقعی، وابسته به لاراول/DB
+        │   ├── Persistence/
+        │   │   ├── Eloquent/
+        │   │   │   ├── Models/
+        │   │   │   │   └── OrderModel.php        ← Eloquent واقعی؛ فقط مسئول ذخیره‌سازی
+        │   │   │   ├── Mappers/
+        │   │   │   │   └── OrderMapper.php       ← پل بین Entity دامنه و Eloquent Model (toDomain/toPersistence)
+        │   │   │   └── Repositories/
+        │   │   │       └── EloquentOrderRepository.php  ← implements OrderRepositoryInterface
+        │   │   └── Migrations/
+        │   │       └── 2024_01_01_000000_create_orders_table.php
+        │   ├── Listeners/
+        │   │   └── SendOrderConfirmationEmail.php ← به OrderPlaced گوش می‌ده، واکنش نشون می‌ده
+        │   └── Providers/
+        │       └── OrderServiceProvider.php       ← bind کردن Interface→Implementation + ثبت route/migration/bus/listener
+        │
+        ├── Presentation/                          ← لایه HTTP
+        │   └── Http/
+        │       ├── Controllers/
+        │       │   └── OrderController.php        ← فقط HTTP↔Application؛ صفر منطق تجاری
+        │       ├── Requests/
+        │       │   └── PlaceOrderRequest.php       ← اعتبارسنجی ورودی
+        │       ├── Resources/
+        │       │   └── OrderResource.php           ← فرمت خروجی JSON
+        │       └── routes.php                      ← /api/orders
+        │
+        └── Tests/
+            └── Unit/
+                └── Domain/
+                    └── OrderTest.php               ← تست خالص دامنه، بدون نیاز به DB یا بوت لاراول
+
+
+
+
+
+
+
+
+ ----------------------------------------------------------------------
+ app/
+└── (هسته خود لاراول، معمولاً خالی یا حداقلی می‌مونه)
+
+Modules/
+└── Order/                          ← اسم ماژول
+    ├── Domain/                     ← قلب DDD - منطق تجاری خالص، بدون وابستگی به لاراول
+    │   ├── Entities/
+    │   │   └── Order.php           ← Entity اصلی (نه Eloquent Model!)
+    │   ├── ValueObjects/
+    │   │   └── OrderStatus.php     ← مقادیر immutable مثل Money, Email, Status
+    │   ├── Events/
+    │   │   └── OrderPlaced.php     ← Domain Events
+    │   ├── Exceptions/
+    │   │   └── InvalidOrderException.php
+    │   ├── Repositories/           ← فقط Interface (Contract)
+    │   │   └── OrderRepositoryInterface.php
+    │   └── Services/                ← منطق دامنه‌ای که به یک Entity تعلق نداره
+    │       └── OrderPricingService.php
+    │
+    ├── Application/                 ← هماهنگ‌کننده Use Caseها
+    │   ├── Commands/
+    │   │   ├── PlaceOrderCommand.php
+    │   │   └── PlaceOrderHandler.php
+    │   ├── Queries/
+    │   │   ├── GetOrderQuery.php
+    │   │   └── GetOrderHandler.php
+    │   ├── DTOs/
+    │   │   └── OrderData.php
+    │   └── UseCases/                ← یا اینجا یا با Command/Handler بالا
+    │       └── PlaceOrderUseCase.php
+    │
+    ├── Infrastructure/               ← پیاده‌سازی واقعی، وابسته به لاراول/DB
+    │   ├── Persistence/
+    │   │   ├── Eloquent/
+    │   │   │   ├── Models/
+    │   │   │   │   └── OrderModel.php   ← Eloquent واقعی
+    │   │   │   └── Repositories/
+    │   │   │       └── EloquentOrderRepository.php  ← implements OrderRepositoryInterface
+    │   │   └── Migrations/
+    │   │       └── 2024_01_01_create_orders_table.php
+    │   ├── Providers/
+    │   │   └── OrderServiceProvider.php  ← bind کردن Interface به Implementation
+    │   └── ExternalServices/
+    │       └── PaymentGatewayClient.php
+    │
+    ├── Presentation/                 ← یا اسمش رو بذار Http
+    │   ├── Http/
+    │   │   ├── Controllers/
+    │   │   │   └── OrderController.php
+    │   │   ├── Requests/
+    │   │   │   └── PlaceOrderRequest.php
+    │   │   ├── Resources/
+    │   │   │   └── OrderResource.php
+    │   │   └── routes.php
+    │   └── Console/
+    │       └── Commands/
+    │
+    └── Tests/
+        ├── Unit/
+        │   └── Domain/
+        └── Feature/                   
